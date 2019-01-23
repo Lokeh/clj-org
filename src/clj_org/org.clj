@@ -325,6 +325,31 @@
                    (not block) [before]
                    :else [before [:pre [:code {:class (str "lang_" lang)} block]]])))))
 
+(defn quotify [txt]
+  (->> txt
+       (re-seq #"(?xs)
+                 (
+                   (?:
+                     (?!
+                       \#\+BEGIN_QUOTE\n
+                       .+?
+                       \#\+END_QUOTE\n
+                     )
+                     .
+                   )+
+                 )?
+                 (?:
+                   \#\+BEGIN_QUOTE\n
+                   (.+?)
+                   \#\+END_QUOTE\n
+                 )?")
+       (remove (partial every? empty?))
+       (mapcat (fn [[_ before block]]
+                 (cond
+                   (not before) [[:quote block]]
+                   (not block) [before]
+                   :else [before [:quote block]])))))
+
 
 (defn example-ify [txt]
   (->> txt
@@ -492,7 +517,7 @@
 (defn tree-pars [tree] (apply-fn-to-strings find-paragraphs tree))
 (defn tree-dashify [tree] (apply-fn-to-strings dashify tree))
 (defn tree-listify [tree] (apply-fn-to-strings plain-listify tree))
-
+(defn tree-quotify [tree] (apply-fn-to-strings quotify tree))
 
 (defn ^:private txt->lines [txt]
   (clojure.string/split txt #"\n"))
@@ -507,13 +532,14 @@
                     convert-body-to-sections
                     tree-srcify
                     tree-example-ify
+                    tree-quotify
                     tree-listify
                     tree-pars
+                    tree-code-ify
                     tree-linkify
                     tree-captionify
                     tree-boldify
                     tree-emify
-                    tree-code-ify
                     tree-strike-ify
                     tree-hr-ify
                     tree-dashify)]
@@ -523,6 +549,17 @@
 
 
 (comment
+
+  (parse-org "
+Asdf =*foo*= jkl
+")
+
+  (parse-org "
+* testing 123
+#+BEGIN_QUOTE
+Foo bar baz *1234* 123
+#+END_QUOTE
+")
 
   (parse-org "#+TITLE: This is an Org Mode file.
 
